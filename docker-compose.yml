@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    restart: always
+    hostname: 'localhost'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab'
+    ports:
+      - '8080:80'
+      - '8443:443'
+    volumes:
+      - './gitlab/config:/etc/gitlab'
+      - './gitlab/data:/var/opt/gitlab' 
+
+  gitlab-runner-shell:
+    build: .
+    depends_on:
+      - gitlab
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      REGISTRATION_TOKEN: token-from-gitlab-ce-instance
+      CI_SERVER_URL: http://gitlab
+      RUNNER_EXECUTOR: shell
+      RUNNER_DESCRIPTION: my-runner
+      REGISTER_NON_INTERACTIVE: 'true'
+      RUN_UNTAGGED: 'true'
+      RUNNER_TAG_LIST: shell
+    entrypoint: ["bash", "-c", "/register_runner.sh && gitlab-runner run"]
+
+
+  gitlab-runner-docker:
+    build: .
+    depends_on:
+      - gitlab
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      REGISTRATION_TOKEN: token-from-gitlab-ce-instance
+      CI_SERVER_URL: http://gitlab
+      RUNNER_EXECUTOR: docker
+      DOCKER_IMAGE: docker:stable
+      RUNNER_DESCRIPTION: my-runner-2
+      REGISTER_NON_INTERACTIVE: 'true'
+      RUN_UNTAGGED: 'true'
+      RUNNER_TAG_LIST: docker
+    entrypoint: ["bash", "-c", "/register_runner.sh && gitlab-runner run"]
